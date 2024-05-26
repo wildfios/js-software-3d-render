@@ -2,9 +2,11 @@
 
 This is a simple software 3D rendering app.
 No GPU or any API is used in this example, just math and HTML Canvas.
-Written just for fun, education and as a simple explanation of a graphics card pipeline (oversimplified).
+Written just for fun, education and as a simple explanation of a graphics card pipeline (**oversimplified**).
 
 *Please note, the code is **not optimized** for more transparency of each step.
+
+Model data is **.OBJ** based format
 
 Implemented steps:
 
@@ -14,7 +16,7 @@ Implemented steps:
 - Rasterization
 - Depth test (Z buffer)
 
-Not implemented:
+Not implemented **ToDo**:
 
 - Proper pixel coloring
 - Texturing
