@@ -6,6 +6,8 @@ const screenHeight = 200;
 let fps = 0;
 let isWireframe = false;
 
+/* Geometry of model */
+
 const objFile = `
 v 0.000000 20.000000 20.000000\n
 v 0.000000 0.000000 20.000000\n
