@@ -1,8 +1,10 @@
 ## Simple software 3D render algorythm
 
-This is a simple software 3D rendering app.\ 
-No GPU or any API is used in this example, just math and HTML Canvas.\
-Written just for fun, and as a simple example of a graphics card pipeline (oversimplified).
+This is a simple software 3D rendering app.
+No GPU or any API is used in this example, just math and HTML Canvas.
+Written just for fun, education and as a simple explanation of a graphics card pipeline (oversimplified).
+
+*Please note, the code is **not optimized** for more transparency of each step.
 
 Implemented steps:
 
