@@ -1,0 +1,21 @@
+body {
+  margin: 0;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f0f0;
+}
+
+.canvas-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  transform: scale(3) translateY(35%);
+}
+
+.canvas-container p {
+  margin: 0;
+  font-size: x-small;
+}
