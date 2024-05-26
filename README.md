@@ -10,9 +10,9 @@ Model data is **.OBJ** based format
 
 Implemented steps:
 
-- Coordinate projection
+- Coordinate projection **3D -> 2D**
 - Geometry building
-- Geometry tranformation (Rotation)
+- Geometry transformation (Rotation, Move)
 - Rasterization
 - Depth test (Z buffer)
 

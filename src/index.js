@@ -42,60 +42,38 @@ function projectPoint(pointCoords) {
 
 /* Interpolation helper */
 
-function interpolateZ (p1, p2, x) {
-    let x1 = p1[0];
-    let z1 = p1[1];
-
-    let x2 = p2[0];
-    let z2 = p2[1];
-
-    const z = x2 === x1 ? z1 : z1 + ((z2 - z1) / (x2 - x1)) * (x - x1);
-
-    return z;
+function interpolateZ(p1, p2, x) {
+    return p2[0] === p1[0] ? p1[1] : p1[1] + ((p2[1] - p1[1]) / (p2[0] - p1[0])) * (x - p1[0]);
 }
 
 /* Rasterization helper, scan triangle by horizontal line to fined intersection points */
 
-function findIntersectionPoint(line, y) {
+function findIntersectionPoint(v1, v2, y) {
     // Extract coordinates of the first line
-    let x1 = line[0][0];
-    let y1 = line[0][1];
-    let z1 = line[0][2];
+    let x1 = v1[0];
+    let y1 = v1[1];
+    let z1 = v1[2];
 
-    let x2 = line[1][0];
-    let y2 = line[1][1];
-    let z2 = line[1][2];
-
-    if ((Math.max(y1, y2) <= y) || (Math.min(y1, y2) >= y)) return [undefined, undefined];
+    let x2 = v2[0];
+    let y2 = v2[1];
+    let z2 = v2[2];
 
     // Calculate determinants
     const det = (y1 - y2) * screenWidth;
     const detX = (x1 - x2) * (screenWidth * y) - screenWidth * (x1 * y2 - y1 * x2);
 
     // Calculate intersection point
-
     const x = Math.round(detX / det);
     const z = x2 === x1 ? z1 : z2 + ((z1 - z2) / (x1 - x2)) * (x - x2);
 
     return [x, z];
 }
 
-/* Max and min value of X coord functions */
+/* 
+    Vertex sort helper
+*/
 
-function maxWithUndefined(...args) {
-    const numbers = args.filter(coords => coords[0] !== undefined);
-    const minCoord = Math.max(...numbers.map(coords => coords[0]));
-    const minPoint = numbers.find(coords => coords[0] === minCoord);
-    
-    return minPoint;
-}
-
-function minWithUndefined(...args) {
-    const numbers = args.filter(coords => coords[0] !== undefined);
-    const minCoord = Math.min(...numbers.map(coords => coords[0]));
-    const minPoint = numbers.find(coords => coords[0] === minCoord);
-    return minPoint;
-}
+const sortVertices = vertices => vertices.sort((a, b) => a[1] - b[1]);
 
 /* 
     Rasterization of triangle
@@ -103,30 +81,39 @@ function minWithUndefined(...args) {
 */
 
 function rasterizeTriangle(buffer, v1, v2, v3) {
-    const minY = Math.trunc(Math.min(v1[1], v2[1], v3[1]));
-    const maxY = Math.trunc(Math.max(v1[1], v2[1], v3[1]));
+    [v1, v2, v3] = sortVertices([v1, v2, v3]);
+
+    const minY = Math.trunc(v1[1]) + 1;
+    const maxY = Math.trunc(v3[1]);
+
+    let startPoint, stopPoint;
 
     for (let y = minY; y <= maxY; y++) {
-        const p1 = findIntersectionPoint([v1, v2], y);
-        const p2 = findIntersectionPoint([v1, v3], y);
-        const p3 = findIntersectionPoint([v2, v3], y);
 
-        const maxX = maxWithUndefined(p1, p2, p3);
-        const minX = minWithUndefined(p1, p2, p3);
+        if (y < v2[1]) {
+            startPoint = findIntersectionPoint(v1, v2, y);
+            stopPoint = findIntersectionPoint(v1, v3, y);
+        } else {
+            startPoint = findIntersectionPoint(v1, v3, y);
+            stopPoint = findIntersectionPoint(v2, v3, y);
+        }
 
-        if (maxX === undefined) continue;
+        if (startPoint[0] > stopPoint[0]) [startPoint, stopPoint] = [stopPoint, startPoint];
 
-        minX[0] = minX[0] < 0 ? 0 : minX[0];
-        maxX[0] = maxX[0] > screenWidth ? screenWidth : maxX[0];
+        startPoint[0] = startPoint[0] < 0 ? 0 : startPoint[0];
+        stopPoint[0] = stopPoint[0] > screenWidth ? screenWidth : stopPoint[0];
 
         let zValue = 0;
+        let currentZValueIndex = 0;
 
-        for (let x = minX[0]; x < maxX[0]; x++) {
-            const interpolatedZValue = interpolateZ(minX, maxX, x) * 4;
+        for (let x = startPoint[0]; x < stopPoint[0]; x++) {
+            const interpolatedZValue = interpolateZ(startPoint, stopPoint, x) * 4;
             zValue = 255 - (interpolatedZValue >= 255 ? 1 : interpolatedZValue);
 
-            if (buffer.data[(y * screenWidth + x) * 4] < zValue) {
-                buffer.data[(y * screenWidth + x) * 4] = zValue;
+            /* Depth test */
+            currentZValueIndex = (y * screenWidth + x) * 4;
+            if (buffer.data[currentZValueIndex] < zValue) {
+                buffer.data[currentZValueIndex] = zValue;
             }
         }
     }
@@ -138,13 +125,21 @@ function rasterizeTriangle(buffer, v1, v2, v3) {
 
 function loadObjModel(objFileString) {
     const lines = objFileString.split('\n');
-
     const vertexArray = lines.filter(line => line.startsWith('v')).map(line => line.split(/\s+/).slice(1).map(coord => parseFloat(coord)));
-    const triangleData = lines.filter(line => line.startsWith('f')).map(line => line.split(/\s+/).slice(1).map(coordIndex => {
-        return parseInt(coordIndex)
-    }));
+    const triangleData = lines.filter(line => line.startsWith('f')).map(line => line.split(/\s+/).slice(1).map(coordIndex => parseInt(coordIndex)));
 
     return [vertexArray, triangleData];
+}
+
+/* Apply translation to each vertex, move object */
+
+function fgTranslateObject(object, translateX, translateY, translateZ) {
+    // Perform translations
+    object.forEach(vertex => {
+        vertex[0] += translateX;
+        vertex[1] += translateY;
+        vertex[2] += translateZ;
+    });
 }
 
 /* Apply rotation matrix to each vertex, rotates model */
@@ -175,7 +170,7 @@ function fgRotateObject(object, angleX, angleY, angleZ) {
     ];
 
     // Perform rotations
-    object.forEach(function (vertex) {
+    object.forEach(vertex => {
         // Rotate around X axis
         let tempY = vertex[1];
         let tempZ = vertex[2];
@@ -287,7 +282,15 @@ const mainProc = () => {
         'ArrowLeft': () => fgRotateObject(vertexes, 0, 2, 0),
         'ArrowUp': () => fgRotateObject(vertexes, 2, 0, 0),
         'ArrowDown': () => fgRotateObject(vertexes, -2, 0, 0),
-        'KeyW': () => isWireframe = !isWireframe
+
+        'KeyA': () => fgTranslateObject(vertexes, -1, 0, 0),
+        'KeyD': () => fgTranslateObject(vertexes, 1, 0, 0),
+        'KeyW': () => fgTranslateObject(vertexes, 0, 1, 0),
+        'KeyS': () => fgTranslateObject(vertexes, 0, -1, 0),
+        'KeyZ': () => fgTranslateObject(vertexes, 0, 0, 1),
+        'KeyX': () => fgTranslateObject(vertexes, 0, 0, -1),
+
+        'KeyT': () => isWireframe = !isWireframe
     }
 
     document.addEventListener('keydown', (event) => {
