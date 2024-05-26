@@ -42,9 +42,7 @@ function projectPoint(pointCoords) {
 
 /* Interpolation helper */
 
-function interpolateZ(p1, p2, x) {
-    return p2[0] === p1[0] ? p1[1] : p1[1] + ((p2[1] - p1[1]) / (p2[0] - p1[0])) * (x - p1[0]);
-}
+const interpolateZ = (p1, p2, x) => p2[0] === p1[0] ? p1[1] : p1[1] + ((p2[1] - p1[1]) / (p2[0] - p1[0])) * (x - p1[0]);
 
 /* Rasterization helper, scan triangle by horizontal line to fined intersection points */
 
@@ -69,16 +67,11 @@ function findIntersectionPoint(v1, v2, y) {
     return [x, z];
 }
 
-/* 
-    Vertex sort helper
-*/
+/* Vertex sort helper */
 
 const sortVertices = vertices => vertices.sort((a, b) => a[1] - b[1]);
 
-/* 
-    Rasterization of triangle
-    Z buffer implantation
-*/
+/* Rasterization of triangle, Z buffer implantation */
 
 function rasterizeTriangle(buffer, v1, v2, v3) {
     [v1, v2, v3] = sortVertices([v1, v2, v3]);
@@ -122,6 +115,8 @@ function rasterizeTriangle(buffer, v1, v2, v3) {
 /*
    ********** 3d draw functions **********
 */
+
+/* Load .OBJ file from string, have some simplifications */
 
 function loadObjModel(objFileString) {
     const lines = objFileString.split('\n');
@@ -203,8 +198,10 @@ function fgProjectGeometry(vertexes) {
 /* Renders model on screen by projected coords */
 
 function fgRenderModelFilled(ctx, order, projectedVertexes) {
+    /* Create video buffer */
     const videoBuffer = ctx.createImageData(screenWidth, screenHeight);
 
+    /* Clear buffer and fill with color */
     for (let i = 0; i < videoBuffer.data.length; i += 4) {
         videoBuffer.data[i] = 50;
         videoBuffer.data[i + 1] = 50;
@@ -212,11 +209,13 @@ function fgRenderModelFilled(ctx, order, projectedVertexes) {
         videoBuffer.data[i + 3] = 255;
     }
 
+    /* Rasterize triangles */
     order.forEach(triangle => {
         rasterizeTriangle(videoBuffer, projectedVertexes[triangle[0]], projectedVertexes[triangle[1]], projectedVertexes[triangle[2]]);
         rasterizeTriangle(videoBuffer, projectedVertexes[triangle[0]], projectedVertexes[triangle[2]], projectedVertexes[triangle[3]]);
     });
 
+    /* Draw buffer on screen */
     ctx.putImageData(videoBuffer, 0, 0);
 }
 
@@ -248,21 +247,27 @@ function fgRenderModelFrame(ctx, order, projectedVertexes) {
 */
 
 const mainProc = () => {
-    const canvas = document.getElementById("myCanvas");
+    const canvas = document.getElementById('myCanvas');
+    const fpsCounter = document.getElementById('fps-counter');
+
     if (!canvas) {
         console.log('Canvas not found, exiting');
         return;
     }
 
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
 
     const [vertexes, order] = loadObjModel(objFile);
 
+    /* Main loop */
     setInterval(() => {
+        /* Clear screen */
         ctx.clearRect(0, 0, screenWidth, screenHeight);
 
+        /* Project 3D coords to 2D camera */
         const projectedVertexes = fgProjectGeometry(vertexes);
 
+        /* Draw solid or wireframe */
         if (isWireframe) {
             fgRenderModelFrame(ctx, order, projectedVertexes);
         } else {
@@ -272,11 +277,13 @@ const mainProc = () => {
         fps++;
     }, 0);
 
+    /* Fps counter */
     setInterval(() => {
-        console.log('fps: ', fps);
+        fpsCounter.textContent = `fps: ${fps}`;
         fps = 0;
     }, 1000);
 
+    /* Actions list */
     const actionTable = {
         'ArrowRight': () => fgRotateObject(vertexes, 0, -2, 0),
         'ArrowLeft': () => fgRotateObject(vertexes, 0, 2, 0),
@@ -291,11 +298,10 @@ const mainProc = () => {
         'KeyX': () => fgTranslateObject(vertexes, 0, 0, -1),
 
         'KeyT': () => isWireframe = !isWireframe
-    }
+    };
 
-    document.addEventListener('keydown', (event) => {
-        actionTable[event.code] && actionTable[event.code]();
-    });
+    /* Apply action */
+    document.addEventListener('keydown', (event) => actionTable[event.code] && actionTable[event.code]());
 };
 
 mainProc();
