@@ -76,12 +76,12 @@ const sortVertices = vertices => vertices.sort((a, b) => a[1] - b[1]);
 function rasterizeTriangle(buffer, v1, v2, v3) {
     [v1, v2, v3] = sortVertices([v1, v2, v3]);
 
-    const minY = Math.trunc(v1[1]) + 1;
+    const minY = Math.trunc(v1[1]);
     const maxY = Math.trunc(v3[1]);
 
     let startPoint, stopPoint;
 
-    for (let y = minY; y <= maxY; y++) {
+    for (let y = minY + 1; y <= maxY; y++) {
 
         if (y < v2[1]) {
             startPoint = findIntersectionPoint(v1, v2, y);
@@ -203,9 +203,6 @@ function fgRenderModelFilled(ctx, order, projectedVertexes) {
 
     /* Clear buffer and fill with color */
     for (let i = 0; i < videoBuffer.data.length; i += 4) {
-        videoBuffer.data[i] = 50;
-        videoBuffer.data[i + 1] = 50;
-        videoBuffer.data[i + 2] = 50;
         videoBuffer.data[i + 3] = 255;
     }
 
@@ -246,6 +243,12 @@ function fgRenderModelFrame(ctx, order, projectedVertexes) {
     ******************************************
 */
 
+const renderLoop = (drawFunction) => {
+    drawFunction();
+    requestAnimationFrame(() => renderLoop(drawFunction));
+    fps ++;
+}
+
 const mainProc = () => {
     const canvas = document.getElementById('myCanvas');
     const fpsCounter = document.getElementById('fps-counter');
@@ -260,22 +263,26 @@ const mainProc = () => {
     const [vertexes, order] = loadObjModel(objFile);
 
     /* Main loop */
-    setInterval(() => {
-        /* Clear screen */
-        ctx.clearRect(0, 0, screenWidth, screenHeight);
 
-        /* Project 3D coords to 2D camera */
-        const projectedVertexes = fgProjectGeometry(vertexes);
+    const renderMesh = (ctx, order, vertexes) => {
+        return () => {
+            /* Clear screen */
+            ctx.clearRect(0, 0, screenWidth, screenHeight);
 
-        /* Draw solid or wireframe */
-        if (isWireframe) {
-            fgRenderModelFrame(ctx, order, projectedVertexes);
-        } else {
-            fgRenderModelFilled(ctx, order, projectedVertexes);
+            const projectedVertexes = fgProjectGeometry(vertexes);
+
+            /* Draw solid or wireframe */
+            if (isWireframe) {
+                fgRenderModelFrame(ctx, order, projectedVertexes);
+            } else {
+                fgRenderModelFilled(ctx, order, projectedVertexes);
+            }            
         }
+    }
 
-        fps++;
-    }, 0);
+    const drawCube = renderMesh(ctx, order, vertexes);
+
+    requestAnimationFrame(() => renderLoop(drawCube));
 
     /* Fps counter */
     setInterval(() => {
